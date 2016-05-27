@@ -154,19 +154,34 @@ class Request {
           return 'cURL Error: ' . curl_error($this->curlHandle);
 
         $httpError = curl_getinfo($this->curlHandle, CURLINFO_HTTP_CODE);
-        if(strpos($httpError, '2') !== 0)
-          return 'HTTP Error #' . $httpError . ' with Response: ' . $response;
-
+		
         try {
             $data = json_decode($response);
 
             if(isset($data->error))
+            {
+	            $data->error->code = $httpError;
                 $this->error($data->error);
+            }
+            elseif ( strpos($httpError, '2') !== 0 )
+            {
+	            if ( ! $data )
+	            {
+		            $data = (object)array();
+	            }
+	            
+	            $data->error = (object)array(
+		            'type' => 'http',
+		            'code' => $httpError,
+	            );
+            }
 
             return $data;
         } catch(Execption $e) {
             $this->error("Couldn't parse the response, or general error happened !, Exception: " . json_encode($e));
         }
+        
+        return FALSE;
     }
 
     private function error($error) {
